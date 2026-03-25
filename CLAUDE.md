@@ -11,8 +11,9 @@ with Python and uv pre-installed. This project adds:
 
 - **`hooks/sharepoint.py`** - Graph API helpers: OBO authentication, folder
   creation, and file upload.
-- **`hooks/pre.py`** - Pre-hook that extracts `path` from the JSON input
-  and creates the corresponding SharePoint folder.
+- **`hooks/pre.py`** - Pre-hook that extracts the optional `path` from the
+  JSON input and creates the corresponding SharePoint folder (including any
+  intermediate segments).
 - **`hooks/post.py`** - Post-hook that uploads all workspace output files
   to the SharePoint folder created by the pre-hook.
 - **`pyproject.toml` / `uv.lock`** - Python dependencies for Azure auth,
@@ -34,12 +35,14 @@ variables must be set.
 
 The hooks use Microsoft Graph API to persist output to SharePoint:
 
-- **Pre-hook** (`hooks/pre.py`): Extracts `path` from the JSON input,
-  creates the folder under `SHAREPOINT_BASE_PATH`, and writes folder metadata
-  to `/tmp/sharepoint_context.json`.
+- **Pre-hook** (`hooks/pre.py`): Extracts `path` from the JSON input
+  (which may be `None`), creates the folder under `SHAREPOINT_BASE_PATH`
+  (also optional), and writes folder metadata to `/tmp/sharepoint_context.json`.
+  When both are unset the drive root is used.
 - **Post-hook** (`hooks/post.py`): Reads the folder context, walks the
-  workspace (skipping `.venv/`, `pyproject.toml`, and `uv.lock`), and uploads
-  all output files.
+  workspace (skipping `.venv/`, `pyproject.toml`, and `uv.lock`), applies
+  any additional `SHAREPOINT_SKIP_PATTERNS` glob patterns, and uploads all
+  remaining output files.
 - **Shared module** (`hooks/sharepoint.py`): Graph client setup, OBO auth,
   folder creation, and file upload helpers.
 

@@ -32,7 +32,7 @@ bin/run.bash '{"prompt": "Your prompt here", "path": "2025/my-output"}'
 The container accepts a JSON object with two keys:
 
 - `prompt` — the prompt passed to Claude (extracted by the `docker-claude-code` entrypoint)
-- `path` — the SharePoint folder path created under `SHAREPOINT_BASE_PATH`
+- `path` — optional SharePoint folder path created under `SHAREPOINT_BASE_PATH`; when omitted, output goes to the base path (or drive root if `SHAREPOINT_BASE_PATH` is also unset)
 
 The pre-hook creates the folder and the post-hook uploads all workspace output to it.
 
@@ -130,12 +130,13 @@ OAuth2 and passes it to the container as `USER_ACCESS_TOKEN`.
 | `SHAREPOINT_SITE_ID` | Yes | Target SharePoint site ID |
 | `SHAREPOINT_DRIVE_ID` | Yes | Target document library drive ID |
 | `SHAREPOINT_BASE_PATH` | No | Folder prefix in SharePoint (default: empty) |
+| `SHAREPOINT_SKIP_PATTERNS` | No | Comma-separated glob patterns for files/dirs to exclude from upload (default: empty) |
 
 ## Project Structure
 
 ```text
 bin/build.bash          Builds the Docker image
-bin/run.bash            Runs the container with a prompt
+bin/run.bash            Runs the container with JSON input
 hooks/sharepoint.py     Graph API helpers (OBO auth, folder creation, file upload)
 hooks/pre.py            Pre-hook: creates SharePoint folder from JSON input path
 hooks/post.py           Post-hook: uploads all workspace output to SharePoint
@@ -150,3 +151,7 @@ pyproject.toml          Python dependencies
   which is limited to 4MB per file. If larger files are needed, the upload logic
   in `hooks/sharepoint.py` would need to switch to the
   [resumable upload session API](https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession).
+
+## License
+
+MIT-0
