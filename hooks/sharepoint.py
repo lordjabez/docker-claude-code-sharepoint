@@ -66,17 +66,17 @@ async def _create_folder(
     parent_path: str | None,
     folder_name: str | None,
 ) -> tuple[str, bool]:
-    if folder_name is None:
-        existing = await (
+    full_path = "/".join(p for p in (parent_path, folder_name) if p)
+
+    if not full_path:
+        root = await (
             client.drives.by_drive_id(drive_id)
-            .items.by_drive_item_id(_item_ref(parent_path))
+            .items.by_drive_item_id("root")
             .get()
         )
-        if existing is None or existing.id is None:
-            raise RuntimeError(f"Folder '{parent_path}' not found")
-        return existing.id, False
-
-    full_path = "/".join(p for p in (parent_path, folder_name) if p)
+        if root is None or root.id is None:
+            raise RuntimeError("Drive root not found")
+        return root.id, False
 
     try:
         existing = await (
@@ -89,8 +89,9 @@ async def _create_folder(
     except ODataError:
         pass
 
-    current_path = parent_path
-    for segment in folder_name.split("/"):
+    current_path: str | None = None
+    created = False
+    for segment in full_path.split("/"):
         body = DriveItem(
             name=segment,
             folder=Folder(),
@@ -103,6 +104,7 @@ async def _create_folder(
                 .items.by_drive_item_id(_item_ref(current_path))
                 .children.post(body, request_configuration=RequestConfiguration())
             )
+            created = True
         except ODataError as e:
             if e.response_status_code == 409:
                 child_path = "/".join(p for p in (current_path, segment) if p)
@@ -117,7 +119,7 @@ async def _create_folder(
             raise RuntimeError(f"Failed to create folder '{segment}' under '{current_path}'")
         current_path = "/".join(p for p in (current_path, segment) if p)
 
-    return result.id, True
+    return result.id, created
 
 
 def upload_files(

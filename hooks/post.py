@@ -1,3 +1,4 @@
+import fnmatch
 import json
 import os
 
@@ -8,6 +9,14 @@ WORKSPACE = "/home/claude/workspace"
 SKIP_DIRS = {".venv"}
 SKIP_FILES = {"pyproject.toml", "uv.lock"}
 
+_extra = os.environ.get("SHAREPOINT_SKIP_PATTERNS", "")
+SKIP_PATTERNS = [p.strip() for p in _extra.split(",") if p.strip()]
+
+
+def _should_skip(name: str) -> bool:
+    return any(fnmatch.fnmatch(name, p) for p in SKIP_PATTERNS)
+
+
 with open("/tmp/sharepoint_context.json") as f:
     context = json.load(f)
 
@@ -16,9 +25,9 @@ folder_path = context["folder_path"]
 
 files = []
 for root, dirs, filenames in os.walk(WORKSPACE):
-    dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+    dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not _should_skip(d)]
     for file_name in filenames:
-        if file_name not in SKIP_FILES:
+        if file_name not in SKIP_FILES and not _should_skip(file_name):
             local_path = os.path.join(root, file_name)
             relative_path = os.path.relpath(local_path, WORKSPACE)
             files.append((local_path, relative_path))

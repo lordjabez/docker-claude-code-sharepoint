@@ -59,6 +59,7 @@ container as `USER_ACCESS_TOKEN`. The hooks exchange it for a Graph-scoped token
 | `SHAREPOINT_SITE_ID` | Target SharePoint site ID |
 | `SHAREPOINT_DRIVE_ID` | Target document library drive ID |
 | `SHAREPOINT_BASE_PATH` | Folder prefix (default: empty) |
+| `SHAREPOINT_SKIP_PATTERNS` | Comma-separated glob patterns for files/dirs to exclude from upload (default: empty) |
 
 ### Entra App Registration
 
