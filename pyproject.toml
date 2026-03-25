@@ -1,0 +1,19 @@
+[project]
+name = "claude-code-sharepoint"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "azure-identity>=1.21.0",
+    "msgraph-sdk>=1.16.0",
+    "openpyxl>=3.1.5",
+    "pymupdf>=1.27.2",
+    "pypandoc>=1.17",
+    "python-docx>=1.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]

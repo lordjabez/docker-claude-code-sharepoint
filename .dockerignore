@@ -1,0 +1,8 @@
+**/*.env
+
+.claude
+.markdownlintignore
+bin
+CLAUDE.md
+README.md
+tests
