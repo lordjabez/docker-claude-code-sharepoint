@@ -146,6 +146,12 @@ Dockerfile              Extends lordjabez/claude-code with SharePoint hooks
 pyproject.toml          Python dependencies
 ```
 
+## CI/CD
+
+A GitHub Actions workflow builds and pushes the image on every push to `main`.
+Each build is tagged `latest` plus the installed Claude Code CLI version (e.g.
+`2.1.83`). Images are built for both linux/amd64 and linux/arm64.
+
 ## Limitations
 
 - **4MB upload limit**: The post-hook uses the Graph API's simple upload endpoint,

@@ -120,3 +120,11 @@ folder. All SharePoint environment variables must be set:
 ```bash
 bin/test.bash
 ```
+
+## CI/CD
+
+GitHub Actions workflow (`.github/workflows/publish.yml`) builds and pushes on every push to main. The image is tagged `latest` plus the installed Claude Code CLI version (e.g. `2.1.83`). Multi-platform: linux/amd64 and linux/arm64. Requires `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` repository secrets.
+
+## Image registry
+
+Published as `lordjabez/claude-code-sharepoint` on Docker Hub.
