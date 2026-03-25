@@ -137,6 +137,7 @@ OAuth2 and passes it to the container as `USER_ACCESS_TOKEN`.
 ```text
 bin/build.bash          Builds the Docker image
 bin/run.bash            Runs the container with JSON input
+bin/test.bash           Integration test: runs three containers against live SharePoint
 hooks/sharepoint.py     Graph API helpers (OBO auth, folder creation, file upload)
 hooks/pre.py            Pre-hook: creates SharePoint folder from JSON input path
 hooks/post.py           Post-hook: uploads all workspace output to SharePoint

@@ -111,3 +111,12 @@ Run them with:
 ```bash
 uv run pytest
 ```
+
+An integration test script runs three containers in parallel against a live
+SharePoint site, exercising no-path, single-segment, and nested-path scenarios.
+It appends a UTC timestamp to `SHAREPOINT_BASE_PATH` so each run gets its own
+folder. All SharePoint environment variables must be set:
+
+```bash
+bin/test.bash
+```
