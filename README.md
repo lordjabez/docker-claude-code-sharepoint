@@ -1,5 +1,7 @@
 # Docker Claude Code SharePoint
 
+[![Docker Hub](https://github.com/lordjabez/docker-claude-code-sharepoint/actions/workflows/publish.yml/badge.svg)](https://github.com/lordjabez/docker-claude-code-sharepoint/actions/workflows/publish.yml)
+
 A Docker image that layers SharePoint integration on top of
 [docker-claude-code](https://github.com/lordjabez/docker-claude-code). It
 provides pre and post hooks that create a SharePoint folder before Claude runs
