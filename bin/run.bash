@@ -11,8 +11,8 @@ docker run --rm \
   -e AZURE_CLIENT_ID \
   -e AZURE_CLIENT_SECRET \
   -e USER_ACCESS_TOKEN \
-  -e SHAREPOINT_SITE_ID \
-  -e SHAREPOINT_DRIVE_ID \
+  -e SHAREPOINT_SITE_URL \
+  -e SHAREPOINT_DRIVE_NAME \
   -e SHAREPOINT_BASE_PATH \
   -e SHAREPOINT_SKIP_PATTERNS \
   lordjabez/claude-code-sharepoint:latest "${input}"

@@ -15,6 +15,89 @@ from msgraph.generated.models.o_data_errors.o_data_error import ODataError
 GRAPH_SCOPES = ["https://graph.microsoft.com/.default"]
 
 
+def resolve_drive_id(
+    client: GraphServiceClient,
+    site_url: str,
+    drive_name: str | None = None,
+) -> str:
+    """Resolve a SharePoint site URL and optional drive name to a drive ID.
+
+    The site_url should be a full URL like
+    ``https://example.sharepoint.com/sites/marketing``.  If drive_name is
+    omitted the default document library (``"Documents"``) is used.
+    """
+    return asyncio.run(_resolve_drive_id(client, site_url, drive_name))
+
+
+def resolve_and_create_folder(
+    client: GraphServiceClient,
+    site_url: str,
+    drive_name: str | None,
+    parent_path: str | None,
+    folder_name: str | None,
+) -> tuple[str, str, bool]:
+    """Resolve a drive and create a folder in a single event loop.
+
+    Returns (drive_id, folder_item_id, created).
+    """
+    return asyncio.run(
+        _resolve_and_create_folder(
+            client, site_url, drive_name, parent_path, folder_name
+        )
+    )
+
+
+async def _resolve_and_create_folder(
+    client: GraphServiceClient,
+    site_url: str,
+    drive_name: str | None,
+    parent_path: str | None,
+    folder_name: str | None,
+) -> tuple[str, str, bool]:
+    drive_id = await _resolve_drive_id(client, site_url, drive_name)
+    folder_item_id, created = await _create_folder(
+        client, drive_id, parent_path, folder_name
+    )
+    return drive_id, folder_item_id, created
+
+
+async def _resolve_drive_id(
+    client: GraphServiceClient,
+    site_url: str,
+    drive_name: str | None = None,
+) -> str:
+    from urllib.parse import urlparse
+
+    parsed = urlparse(site_url)
+    hostname = parsed.hostname
+    site_path = parsed.path.rstrip("/")
+    if not hostname or not site_path:
+        raise ValueError(
+            f"SHAREPOINT_SITE_URL must include hostname and path (got {site_url!r})"
+        )
+
+    site = await client.sites.by_site_id(f"{hostname}:{site_path}:").get()
+    if site is None or site.id is None:
+        raise RuntimeError(f"Could not resolve site for {site_url}")
+
+    drives = await client.sites.by_site_id(site.id).drives.get()
+    if drives is None or drives.value is None:
+        raise RuntimeError(f"No drives found for site {site_url}")
+
+    target_name = drive_name or "Documents"
+    for drive in drives.value:
+        if drive.name == target_name:
+            if drive.id is None:
+                raise RuntimeError(f"Drive '{target_name}' has no ID")
+            return drive.id
+
+    available = [d.name for d in drives.value if d.name]
+    raise RuntimeError(
+        f"Drive '{target_name}' not found in site {site_url}. "
+        f"Available drives: {available}"
+    )
+
+
 def _item_ref(path: str | None) -> str:
     """Return a Graph API drive-item reference for the given path.
 

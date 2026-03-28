@@ -84,30 +84,6 @@ as the calling user in SharePoint, and their permissions are respected.
      enables local testing. When you have an upstream REST endpoint app, add
      its client ID here too.
 
-### Getting SharePoint IDs
-
-Get a Graph-scoped token (only needed for this one-time setup):
-
-```bash
-TOKEN=$(az account get-access-token --resource https://graph.microsoft.com --query accessToken -o tsv)
-```
-
-Find the site ID:
-
-```bash
-curl -s -H "Authorization: Bearer \$TOKEN" \
-  "https://graph.microsoft.com/v1.0/sites/\$SHAREPOINT_TENANT.sharepoint.com:/sites/\$SHAREPOINT_SITE_NAME" | jq -r .id
-```
-
-Find the drive ID using the site ID from the previous response:
-
-```bash
-curl -s -H "Authorization: Bearer \$TOKEN" \
-  "https://graph.microsoft.com/v1.0/sites/\$SHAREPOINT_SITE_ID/drives" | jq -r .value[].id
-```
-
-Look for the document library you want (usually "Documents") and copy its `id`.
-
 ### Getting a User Access Token (Local Testing)
 
 For local testing without the upstream REST endpoint, use the Azure CLI:
@@ -129,8 +105,8 @@ OAuth2 and passes it to the container as `USER_ACCESS_TOKEN`.
 | `AZURE_CLIENT_ID` | Yes | App registration client ID |
 | `AZURE_CLIENT_SECRET` | Yes | App registration client secret |
 | `USER_ACCESS_TOKEN` | Yes | User's JWT (from upstream endpoint or Azure CLI) |
-| `SHAREPOINT_SITE_ID` | Yes | Target SharePoint site ID |
-| `SHAREPOINT_DRIVE_ID` | Yes | Target document library drive ID |
+| `SHAREPOINT_SITE_URL` | Yes | SharePoint site URL (e.g. `https://example.sharepoint.com/sites/marketing`) |
+| `SHAREPOINT_DRIVE_NAME` | No | Document library name (default: `Documents`) |
 | `SHAREPOINT_BASE_PATH` | No | Folder prefix in SharePoint (default: empty) |
 | `SHAREPOINT_SKIP_PATTERNS` | No | Comma-separated glob patterns for files/dirs to exclude from upload (default: empty) |
 
@@ -140,7 +116,7 @@ OAuth2 and passes it to the container as `USER_ACCESS_TOKEN`.
 bin/build.bash          Builds the Docker image
 bin/run.bash            Runs the container with JSON input
 bin/test.bash           Integration test: runs three containers against live SharePoint
-hooks/sharepoint.py     Graph API helpers (OBO auth, folder creation, file upload)
+hooks/sharepoint.py     Graph API helpers (OBO auth, site/drive resolution, folder creation, file upload)
 hooks/pre.py            Pre-hook: creates SharePoint folder from JSON input path
 hooks/post.py           Post-hook: uploads all workspace output to SharePoint
 tests/                  Unit tests

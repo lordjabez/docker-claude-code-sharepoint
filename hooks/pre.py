@@ -2,19 +2,22 @@ import json
 import os
 import sys
 
-from sharepoint import create_folder, get_graph_client
+from sharepoint import get_graph_client, resolve_and_create_folder
 
 
 input_data = json.loads(sys.argv[1])
 path = input_data.get("path")
 
-drive_id = os.environ["SHAREPOINT_DRIVE_ID"]
+site_url = os.environ["SHAREPOINT_SITE_URL"]
+drive_name = os.environ.get("SHAREPOINT_DRIVE_NAME")
 base_path = os.environ.get("SHAREPOINT_BASE_PATH")
 
-folder_path = "/".join(p for p in (base_path, path) if p)
-
 client = get_graph_client()
-folder_item_id, created = create_folder(client, drive_id, base_path, path)
+drive_id, folder_item_id, created = resolve_and_create_folder(
+    client, site_url, drive_name, base_path, path
+)
+
+folder_path = "/".join(p for p in (base_path, path) if p)
 
 context = {
     "folder_item_id": folder_item_id,
@@ -24,6 +27,8 @@ context = {
 
 with open("/tmp/sharepoint_context.json", "w") as f:
     json.dump(context, f)
+
+print(f"Using SharePoint site: {site_url}")
 
 status = "Created" if created else "Using existing"
 print(f"{status} SharePoint folder: {folder_path}")

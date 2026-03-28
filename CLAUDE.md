@@ -9,8 +9,8 @@ images extend this one to add domain-specific Claude instructions and dependenci
 The base image (`lordjabez/claude-code`) provides a headless Claude Code runtime
 with Python and uv pre-installed. This project adds:
 
-- **`hooks/sharepoint.py`** - Graph API helpers: OBO authentication, folder
-  creation, and file upload.
+- **`hooks/sharepoint.py`** - Graph API helpers: OBO authentication, site/drive
+  resolution, folder creation, and file upload.
 - **`hooks/pre.py`** - Pre-hook that extracts the optional `path` from the
   JSON input and creates the corresponding SharePoint folder (including any
   intermediate segments).
@@ -44,7 +44,7 @@ The hooks use Microsoft Graph API to persist output to SharePoint:
   any additional `SHAREPOINT_SKIP_PATTERNS` glob patterns, and uploads all
   remaining output files.
 - **Shared module** (`hooks/sharepoint.py`): Graph client setup, OBO auth,
-  folder creation, and file upload helpers.
+  site/drive resolution, folder creation, and file upload helpers.
 
 Authentication uses the on-behalf-of (OBO) flow. An upstream REST endpoint
 authenticates the user via Entra ID and passes the user's access token to the
@@ -59,8 +59,8 @@ container as `USER_ACCESS_TOKEN`. The hooks exchange it for a Graph-scoped token
 | `AZURE_CLIENT_ID` | App registration client ID |
 | `AZURE_CLIENT_SECRET` | App registration client secret |
 | `USER_ACCESS_TOKEN` | User's JWT from the upstream endpoint |
-| `SHAREPOINT_SITE_ID` | Target SharePoint site ID |
-| `SHAREPOINT_DRIVE_ID` | Target document library drive ID |
+| `SHAREPOINT_SITE_URL` | SharePoint site URL (e.g. `https://example.sharepoint.com/sites/marketing`) |
+| `SHAREPOINT_DRIVE_NAME` | Document library name (default: `Documents`) |
 | `SHAREPOINT_BASE_PATH` | Folder prefix (default: empty) |
 | `SHAREPOINT_SKIP_PATTERNS` | Comma-separated glob patterns for files/dirs to exclude from upload (default: empty) |
 
