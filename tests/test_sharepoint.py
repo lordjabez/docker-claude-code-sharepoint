@@ -199,16 +199,184 @@ class TestResolveAndCreateFolder:
         mock_resolve.return_value = "drive-1"
         mock_create.return_value = ("folder-id", True)
         client = MagicMock()
-        drive_id, folder_id, created = resolve_and_create_folder(
+        drive_id, folder_id, created, downloaded = resolve_and_create_folder(
             client, "https://example.sharepoint.com/sites/test", None, "base", "sub"
         )
         assert drive_id == "drive-1"
         assert folder_id == "folder-id"
         assert created is True
+        assert downloaded == []
         mock_resolve.assert_called_once_with(
             client, "https://example.sharepoint.com/sites/test", None
         )
         mock_create.assert_called_once_with(client, "drive-1", "base", "sub")
+
+    @patch("sharepoint._download_files", new_callable=AsyncMock)
+    @patch("sharepoint._create_folder", new_callable=AsyncMock)
+    @patch("sharepoint._resolve_drive_id", new_callable=AsyncMock)
+    def test_downloads_when_existing_and_dest_provided(
+        self, mock_resolve, mock_create, mock_download
+    ) -> None:
+        mock_resolve.return_value = "drive-1"
+        mock_create.return_value = ("folder-id", False)
+        mock_download.return_value = ["file.txt"]
+        client = MagicMock()
+        drive_id, folder_id, created, downloaded = resolve_and_create_folder(
+            client,
+            "https://example.sharepoint.com/sites/test",
+            None,
+            "base",
+            "sub",
+            download_dest="/tmp/dest",
+        )
+        assert created is False
+        assert downloaded == ["file.txt"]
+        mock_download.assert_called_once_with(
+            client, "drive-1", "folder-id", "/tmp/dest", ""
+        )
+
+    @patch("sharepoint._download_files", new_callable=AsyncMock)
+    @patch("sharepoint._create_folder", new_callable=AsyncMock)
+    @patch("sharepoint._resolve_drive_id", new_callable=AsyncMock)
+    def test_skips_download_when_created(
+        self, mock_resolve, mock_create, mock_download
+    ) -> None:
+        mock_resolve.return_value = "drive-1"
+        mock_create.return_value = ("folder-id", True)
+        client = MagicMock()
+        _, _, created, downloaded = resolve_and_create_folder(
+            client,
+            "https://example.sharepoint.com/sites/test",
+            None,
+            "base",
+            "sub",
+            download_dest="/tmp/dest",
+        )
+        assert created is True
+        assert downloaded == []
+        mock_download.assert_not_called()
+
+    @patch("sharepoint._download_files", new_callable=AsyncMock)
+    @patch("sharepoint._create_folder", new_callable=AsyncMock)
+    @patch("sharepoint._resolve_drive_id", new_callable=AsyncMock)
+    def test_skips_download_when_no_dest(
+        self, mock_resolve, mock_create, mock_download
+    ) -> None:
+        mock_resolve.return_value = "drive-1"
+        mock_create.return_value = ("folder-id", False)
+        client = MagicMock()
+        _, _, created, downloaded = resolve_and_create_folder(
+            client,
+            "https://example.sharepoint.com/sites/test",
+            None,
+            "base",
+            "sub",
+        )
+        assert created is False
+        assert downloaded == []
+        mock_download.assert_not_called()
+
+
+class TestDownloadFilesGraph:
+    """Tests that verify _download_files Graph API calls via resolve_and_create_folder."""
+
+    def _make_file_item(self, name: str, item_id: str) -> MagicMock:
+        item = MagicMock()
+        item.name = name
+        item.id = item_id
+        item.folder = None
+        return item
+
+    def _make_folder_item(self, name: str, item_id: str) -> MagicMock:
+        item = MagicMock()
+        item.name = name
+        item.id = item_id
+        item.folder = MagicMock()
+        return item
+
+    @patch("sharepoint._create_folder", new_callable=AsyncMock)
+    @patch("sharepoint._resolve_drive_id", new_callable=AsyncMock)
+    def test_downloads_files(self, mock_resolve, mock_create, tmp_path) -> None:
+        mock_resolve.return_value = "drive-1"
+        mock_create.return_value = ("folder-id", False)
+
+        file_item = self._make_file_item("report.txt", "file-1")
+        children_response = MagicMock()
+        children_response.value = [file_item]
+
+        client = MagicMock()
+        drive = client.drives.by_drive_id.return_value
+        items = drive.items.by_drive_item_id.return_value
+        items.children.get = AsyncMock(return_value=children_response)
+        items.content.get = AsyncMock(return_value=b"hello world")
+
+        _, _, _, downloaded = resolve_and_create_folder(
+            client, "https://example.sharepoint.com/sites/test",
+            None, "base", "sub", download_dest=str(tmp_path),
+        )
+        assert downloaded == ["report.txt"]
+        assert (tmp_path / "report.txt").read_bytes() == b"hello world"
+
+    @patch("sharepoint._create_folder", new_callable=AsyncMock)
+    @patch("sharepoint._resolve_drive_id", new_callable=AsyncMock)
+    def test_downloads_nested_folders(self, mock_resolve, mock_create, tmp_path) -> None:
+        mock_resolve.return_value = "drive-1"
+        mock_create.return_value = ("folder-id", False)
+
+        inner_file = self._make_file_item("data.csv", "file-2")
+        subfolder = self._make_folder_item("sub", "folder-2")
+
+        top_response = MagicMock()
+        top_response.value = [subfolder]
+        sub_response = MagicMock()
+        sub_response.value = [inner_file]
+
+        client = MagicMock()
+        drive = client.drives.by_drive_id.return_value
+
+        call_count = 0
+
+        async def mock_children_get(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return top_response
+            return sub_response
+
+        drive.items.by_drive_item_id.return_value.children.get = AsyncMock(
+            side_effect=mock_children_get
+        )
+        drive.items.by_drive_item_id.return_value.content.get = AsyncMock(
+            return_value=b"csv data"
+        )
+
+        _, _, _, downloaded = resolve_and_create_folder(
+            client, "https://example.sharepoint.com/sites/test",
+            None, "base", "sub", download_dest=str(tmp_path),
+        )
+        assert downloaded == ["sub/data.csv"]
+        assert (tmp_path / "sub" / "data.csv").read_bytes() == b"csv data"
+
+    @patch("sharepoint._create_folder", new_callable=AsyncMock)
+    @patch("sharepoint._resolve_drive_id", new_callable=AsyncMock)
+    def test_empty_folder(self, mock_resolve, mock_create, tmp_path) -> None:
+        mock_resolve.return_value = "drive-1"
+        mock_create.return_value = ("folder-id", False)
+
+        children_response = MagicMock()
+        children_response.value = []
+
+        client = MagicMock()
+        drive = client.drives.by_drive_id.return_value
+        drive.items.by_drive_item_id.return_value.children.get = AsyncMock(
+            return_value=children_response
+        )
+
+        _, _, _, downloaded = resolve_and_create_folder(
+            client, "https://example.sharepoint.com/sites/test",
+            None, "base", "sub", download_dest=str(tmp_path),
+        )
+        assert downloaded == []
 
 
 class TestUploadFiles:

@@ -1,11 +1,37 @@
-name: Publish Docker image
+name: Docker Hub
 
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '10 0 * * *'
+  workflow_dispatch:
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.compare.outputs.should_publish }}
+    steps:
+      - name: Get latest npm version
+        id: npm
+        run: |
+          version=$(curl -s https://registry.npmjs.org/@anthropic-ai/claude-code/latest | jq -r .version)
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Check if Docker Hub tag exists
+        id: compare
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' https://hub.docker.com/v2/repositories/lordjabez/claude-code-sharepoint/tags/${{ steps.npm.outputs.version }})
+          if [ "$status" = "200" ]; then
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
+    needs: check
+    if: needs.check.outputs.should_publish == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,8 +49,6 @@ jobs:
           context: .
           load: true
           tags: lordjabez/claude-code-sharepoint:local
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Extract Claude Code version
         id: version
@@ -47,5 +71,3 @@ jobs:
           tags: |
             lordjabez/claude-code-sharepoint:latest
             lordjabez/claude-code-sharepoint:${{ steps.version.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max

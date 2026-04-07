@@ -35,14 +35,18 @@ def resolve_and_create_folder(
     drive_name: str | None,
     parent_path: str | None,
     folder_name: str | None,
-) -> tuple[str, str, bool]:
+    download_dest: str | None = None,
+) -> tuple[str, str, bool, list[str]]:
     """Resolve a drive and create a folder in a single event loop.
 
-    Returns (drive_id, folder_item_id, created).
+    When download_dest is provided and the folder already exists, its
+    contents are downloaded into that directory.
+
+    Returns (drive_id, folder_item_id, created, downloaded_files).
     """
     return asyncio.run(
         _resolve_and_create_folder(
-            client, site_url, drive_name, parent_path, folder_name
+            client, site_url, drive_name, parent_path, folder_name, download_dest
         )
     )
 
@@ -53,12 +57,18 @@ async def _resolve_and_create_folder(
     drive_name: str | None,
     parent_path: str | None,
     folder_name: str | None,
-) -> tuple[str, str, bool]:
+    download_dest: str | None = None,
+) -> tuple[str, str, bool, list[str]]:
     drive_id = await _resolve_drive_id(client, site_url, drive_name)
     folder_item_id, created = await _create_folder(
         client, drive_id, parent_path, folder_name
     )
-    return drive_id, folder_item_id, created
+    downloaded: list[str] = []
+    if not created and download_dest:
+        downloaded = await _download_files(
+            client, drive_id, folder_item_id, download_dest, ""
+        )
+    return drive_id, folder_item_id, created, downloaded
 
 
 async def _resolve_drive_id(
@@ -203,6 +213,52 @@ async def _create_folder(
         current_path = "/".join(p for p in (current_path, segment) if p)
 
     return result.id, created
+
+
+async def _download_files(
+    client: GraphServiceClient,
+    drive_id: str,
+    folder_item_id: str,
+    dest_dir: str,
+    relative_prefix: str,
+) -> list[str]:
+    downloaded: list[str] = []
+
+    children = await (
+        client.drives.by_drive_id(drive_id)
+        .items.by_drive_item_id(folder_item_id)
+        .children.get()
+    )
+    if children is None or children.value is None:
+        return downloaded
+
+    for item in children.value:
+        if item.name is None or item.id is None:
+            continue
+
+        relative_path = f"{relative_prefix}/{item.name}" if relative_prefix else item.name
+
+        if item.folder is not None:
+            sub = await _download_files(
+                client, drive_id, item.id, dest_dir, relative_path
+            )
+            downloaded.extend(sub)
+        else:
+            local_path = os.path.join(dest_dir, relative_path)
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+            content = await (
+                client.drives.by_drive_id(drive_id)
+                .items.by_drive_item_id(item.id)
+                .content.get()
+            )
+            if content is not None:
+                with open(local_path, "wb") as f:
+                    f.write(content)
+                downloaded.append(relative_path)
+                print(f"Downloaded: {relative_path}")
+
+    return downloaded
 
 
 def upload_files(

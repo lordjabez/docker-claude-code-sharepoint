@@ -38,7 +38,9 @@ The hooks use Microsoft Graph API to persist output to SharePoint:
 - **Pre-hook** (`hooks/pre.py`): Extracts `path` from the JSON input
   (which may be `None`), creates the folder under `SHAREPOINT_BASE_PATH`
   (also optional), and writes folder metadata to `/tmp/sharepoint_context.json`.
-  When both are unset the drive root is used.
+  When both are unset the drive root is used. If the folder already exists,
+  all of its contents are downloaded into the workspace so Claude can build
+  on prior output.
 - **Post-hook** (`hooks/post.py`): Reads the folder context, walks the
   workspace (skipping `.venv/`, `pyproject.toml`, and `uv.lock`), applies
   any additional `SHAREPOINT_SKIP_PATTERNS` glob patterns, and uploads all
