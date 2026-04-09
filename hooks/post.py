@@ -1,16 +1,23 @@
 import fnmatch
 import json
 import os
+import tarfile
 
 from sharepoint import get_graph_client, upload_files
 
 
 WORKSPACE = "/home/claude/workspace"
+PROJECT_DIR = "/home/claude/.claude/projects/-home-claude-workspace"
+TARBALL_PATH = os.path.join(WORKSPACE, "project.tgz")
 SKIP_DIRS = {".venv"}
 SKIP_FILES = {"pyproject.toml", "uv.lock"}
 
 _extra = os.environ.get("SHAREPOINT_SKIP_PATTERNS", "")
 SKIP_PATTERNS = [p.strip() for p in _extra.split(",") if p.strip()]
+
+
+with tarfile.open(TARBALL_PATH, "w:gz") as tar:
+    tar.add(PROJECT_DIR, arcname=".")
 
 
 def _should_skip(name: str) -> bool:
