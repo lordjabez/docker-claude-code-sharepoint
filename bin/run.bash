@@ -15,4 +15,5 @@ docker run --rm \
   -e SHAREPOINT_DRIVE_NAME \
   -e SHAREPOINT_BASE_PATH \
   -e SHAREPOINT_SKIP_PATTERNS \
+  --tty \
   lordjabez/claude-code-sharepoint:latest "${input}"

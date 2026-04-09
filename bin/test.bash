@@ -14,7 +14,7 @@ args_file=$(mktemp)
 cat > "${args_file}" <<'EOF'
 '{"prompt": "write a short poem about programming into a markdown file"}'
 '{"prompt": "write a short poem about programming into a markdown file", "path": "foo"}'
-'{"prompt": "write a short poem about programming into a markdown file", "path": "foo/bar"}'
+'{"prompt": "write a short poem about programming into a markdown file", "path": "bar/baz"}'
 EOF
 
 fanout bin/run.bash "${args_file}"
